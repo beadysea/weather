@@ -159,7 +159,6 @@ def main():
                 ser.close() #Close the serial com link
                 rcv_struct = ('t', 'p', 'h')
                 rcvdata = rcvd.split(',')
-                print (rcvdata)
                 data.update({rc:rcvdata[rcv_struct.index(rc)]
                             for rc in rcv_struct})
 
