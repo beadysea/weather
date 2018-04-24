@@ -7,6 +7,7 @@ def main():
     file_dir = r'.\weather_logs'
     get_sample = False
     screen = False
+    calibration = -2
     command = ''
 
     clear_screen()
@@ -41,7 +42,7 @@ def main():
         default_file = True
     else:
         default_file = False
-        file_path = '{}/{}'.format(file_dir,file_prefix)
+        fp = '{}/{}'.format(file_dir,file_prefix)
 
     clear_screen()
     header()
@@ -143,69 +144,52 @@ def main():
                     command = 'quit'
                     break
                 #Sample Data and Time
-                sample_year = time.strftime("%Y")
-                sample_month = time.strftime("%m")
-                sample_day = time.strftime("%d")
-                sample_hour = time.strftime("%H")
-                sample_minutes = time.strftime("%M")
-                sample_seconds = time.strftime("%S")
+                t_struct = ('Y', 'm', 'd', 'H', 'M', 'S')
+                data ={t:time.strftime('%{}'.format(t)) for t in t_struct}
 
                 # set next sample time ready for next loop
-                next_sample_time = time.time() + sample_delay
+                next_sample_time = time.time() + sample_delay + calibration
 
                 #send a byte to weather station triggering sampling of sensors
                 out_byte = '1'
                 ser.write(out_byte.encode())
 
                 # read newest data from Arduino weather station
-                sd = str(ser.readline(), 'utf8').strip('\r\n')
-                #sd = sd.strip('\n')
-                data = sd.split(',')
+                rcvd = str(ser.readline(), 'utf8').strip('\r\n')
                 ser.close() #Close the serial com link
-
-                # extract the data
-                temperature = float(data[0])
-                pressure = float(data[1])
-                humidity = float(data[2])
+                rcv_struct = ('t', 'p', 'h')
+                rcvdata = rcvd.split(',')
+                data.update({rc:rcvdata[rcv_struct.index(rc)]
+                            for rc in rcv_struct})
 
                 #build the Filename using logtime
-                filetime = sample_year + '-' + \
-                           sample_month + '-' + \
-                           sample_day + '_' + \
-                           sample_hour + '-' + \
-                           sample_minutes + '-' + \
-                           sample_seconds
-
+                filetime = '{}-{}-{}_{}-{}-{}'.format(
+                                                data['Y'], data['m'], data['d'],
+                                                data['H'], data['M'], data['S']
+                                                )
                 #build the date field
-                datefield = sample_day + '/' + \
-                            sample_month + '/' + \
-                            sample_year
+                datefield = '{}/{}/{}'.format(data['d'], data['m'], data['Y'])
 
-                #build the time field
-                timefield = sample_hour + ':' + \
-                            sample_minutes + ':' + \
-                            sample_seconds
+                #build the ti[][me field
+                timefield = '{}:{}:{}'.format(data['H'], data['M'], data['S'])
 
                 if first_run:
                     # create log file
                     if default_file:
                         file_path =r'{}\{}.csv'.format(file_dir, filetime)
                     else:
-                        file_path = file_path + '_{}.csv'.format(filetime)
-                    print('{}\n{}\n{}\n{}'.format(file_path, datefield, timefield, data))
+                        file_path = fp + '_{}.csv'.format(filetime)
                     if not os.path.exists(file_dir):
                         os.mkdir(file_dir)
                     with open(file_path,'x') as file:
-                        file.write('Date,Time,Temperature,Pressure,Humidity\n')
+                        file.write('Date,Time,Temperature \u00b0C,Pressure Pa,Humidity %\n')
                     file.close()
                     first_run = False
                 #write to log file
                 with open(file_path, 'a') as file:
-
-
                     file.write('{},{},{},{},{}\n'.format(
                                                 datefield, timefield,
-                                                temperature, pressure, humidity
+                                                data['t'], data['p'], data['h']
                                                 ))
                     file.close()
 
@@ -213,20 +197,20 @@ def main():
                 if screen:
                     if line_count == 0:
                         clear_screen()
-                        print('Time\t\tTemperature\tPressure\tHumidity')
+                        print('Time\t\tTemperature \u00b0C\tPressure Pa\tHumidity %')
                         line_count += 1
                     if line_count < 26:
                         print('{}\t{}\t\t{}\t\t{}'.format(
-                                                    timefield, temperature,
-                                                    pressure, humidity
+                                                    timefield, data['t'],
+                                                    data['p'], data['h']
                                                     ))
                         line_count += 1
                     else:
                         clear_screen()
-                        print('Time\t\tTemperature\tPressure\tHumidity')
+                        print('Time\t\tTemperature \u00b0C\tPressure Pa\tHumidity %')
                         print('{}\t{}\t\t{}\t\t{}'.format(
-                                                    timefield, temperature,
-                                                    pressure, humidity
+                                                    timefield, data['t'],
+                                                    data['p'], data['h']
                                                     ))
                         line_count = 2
 
