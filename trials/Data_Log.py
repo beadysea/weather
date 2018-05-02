@@ -8,8 +8,9 @@ from time import sleep
 
 #_________________________Functions____________________________#
 
+# takeReading() reads the serial data sent from the Arduino and saves the data as a list called sensorData
 def takeReading():
-    data = str(ser.readline().strip(), 'utf-8')
+    data = str(ser.readline(), 'utf-8').strip('\n')
     sensorData = data.split()
     return sensorData
 
@@ -20,6 +21,7 @@ def populateFile(file_name):
         csv_writer = csv.writer(csv_file)
         csv_writer.writerow([sensorData[0],sensorData[1], sensorData[2], sensorData[3], sensorData[4]])
 
+#kbdScan() scans the keyboard for any key strokes and changes the variable Command dependant on the key pressed
 def kbdScan(Command):
     if kbhit():
         unichr = ord(getch())
@@ -33,15 +35,18 @@ def kbdScan(Command):
             Command = 'toggle_screen_print'
     return Command
 
-#csvSetUp()
+#csvSetUp() is used when first creating the file for data logging.
+#It takes the users defined file name and creates a .csv in the specified directory
+#The heading Weather Station Project is written to the file as are the data headings for the data
+#These are: Day, Hour, Temperature, Pressure and Humidity.
+
 def csvSetUp():
     with open ("C:/Users/arran/OneDrive/Documents/Weather Station Data/" + file_name, 'a') as csv_file:
                 csv_writer = csv.writer(csv_file)
                 csv_writer.writerow(["Weather Station Project"])
                 csv_writer.writerow(["Day","Hour","Temperature","Pressure","Humidity","\n"])
-    return file_name
 #_____________________Program Introduction_______________________________#
-
+#The program starts by printing Initializing for aesthetics and to allow the user to see that the program is working.
 print("Initializing....\n")
 COM = input("Please input the COM port your Arduino is currently using ")
 ser = serial.Serial('COM'+COM, 9600) # Establish the connection on a specific port
