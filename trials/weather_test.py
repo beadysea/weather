@@ -1,14 +1,13 @@
-import time
-import serial
+import weather_station
 from msvcrt import kbhit, getch
-import os
 
 def main():
-    file_dir = r'.\weather_logs'
+    
     get_sample = False
     screen = False
-    calibration = -2
     command = ''
+
+    ws = weather_station(port)
 
     clear_screen()
     header()
@@ -137,61 +136,10 @@ def main():
                 first_run = True
 
         if get_sample:
-            if time.time() >= next_sample_time or first_run:
-                ser = com_open(port) #Open a serial comm link
-                if ser == -1:
-                    #com port failure
-                    command = 'quit'
-                    break
-                #Sample Data and Time
-                t_struct = ('Y', 'm', 'd', 'H', 'M', 'S')
-                data ={t:time.strftime('%{}'.format(t)) for t in t_struct}
+            if time.time() >= ws.next_sample_time or ws.first_run:
 
-                # set next sample time ready for next loop
-                next_sample_time = time.time() + sample_delay + calibration
-
-                #send a byte to weather station triggering sampling of sensors
-                out_byte = '1'
-                ser.write(out_byte.encode())
-
-                # read newest data from Arduino weather station
-                rcvd = str(ser.readline(), 'utf8').strip('\r\n')
-                ser.close() #Close the serial com link
-                rcv_struct = ('t', 'p', 'h')
-                rcvdata = rcvd.split(',')
-                data.update({rc:rcvdata[rcv_struct.index(rc)]
-                            for rc in rcv_struct})
-
-                #build the Filename using logtime
-                filetime = '{}-{}-{}_{}-{}-{}'.format(
-                                                data['Y'], data['m'], data['d'],
-                                                data['H'], data['M'], data['S']
-                                                )
-                #build the date field
-                datefield = '{}/{}/{}'.format(data['d'], data['m'], data['Y'])
-
-                #build the ti[][me field
-                timefield = '{}:{}:{}'.format(data['H'], data['M'], data['S'])
-
-                if first_run:
-                    # create log file
-                    if default_file:
-                        file_path =r'{}\{}.csv'.format(file_dir, filetime)
-                    else:
-                        file_path = fp + '_{}.csv'.format(filetime)
-                    if not os.path.exists(file_dir):
-                        os.mkdir(file_dir)
-                    with open(file_path,'x') as file:
-                        file.write('Date,Time,Temperature \u00b0C,Pressure Pa,Humidity %\n')
-                    file.close()
-                    first_run = False
-                #write to log file
-                with open(file_path, 'a') as file:
-                    file.write('{},{},{},{},{}\n'.format(
-                                                datefield, timefield,
-                                                data['t'], data['p'], data['h']
-                                                ))
-                    file.close()
+                data = ws.get_sample()
+                ws.write_file(data)
 
                 # Printing to screen
                 if screen:
@@ -216,43 +164,9 @@ def main():
 
 
 # Other Functions
-def com_open(port):
-    """Open a communication link to the Arduino weather station
 
-        Args:
-            port: The COM port to open
-        """
-    ser_dev = '\\\\.\\COM{}'.format(port)
 
-    # Establish the connection on a specific port
-    try:
-        ser = serial.Serial(ser_dev, 9600)
-    except serial.serialutil.SerialException:
 
-        print('Fatal Error: Com port {} could not be opened.'.format(port))
-        print('Terminating the application, please restart the application.')
-        ser = -1
-        return ser
-    else:
-        time.sleep(2)
-        return ser
-
-def sample_interval(hours, minutes, seconds):
-    """Sets the interval between data samples
-
-    Args:
-    hours - the hours between data samples 0 and 23
-    minutes - integer between 0 and 59
-    seconds - integer between 0 and 59
-
-    Returns:
-    time interval in seconds.
-    """
-    if hours == 0 and minutes == 0 and seconds == 0:
-        interval_seconds = 60  # default interval of 1 minute
-    else:
-        interval_seconds = hours * 3600 + minutes * 60 + seconds
-    return interval_seconds
 
 def kbd_scan():
     """Scans keyboard for valid keypresses
